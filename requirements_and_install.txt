@@ -1,0 +1,40 @@
+TO RUN SOAR, PLEASE INSTALL THE FOLLOWING:
+
+Python <-- MUST MANUALLY DOWNLOAD FIRST THEN YOU CAN US SCRIPT TO QUICKLY INSTALL OTHERS.
+pyttsx3  
+SpeechRecognition  
+pyaudio 
+psutil 
+
+Also, there is a install.py script to quickly install all of them.
+
+Then run:
+
+soar_main.py (recommended you run it with Visual Studio Code)
+
+
+SUPPORTED SYSTEMS:
+Mac: Works  
+Windows: Should work (not fully tested)  
+Linux: Not supported  
+
+
+NOTES:
+- Expect bugs (this is early beta software)
+- Voice input and output are supported
+- You can type commands or use voice
+
+
+COMMANDS:
+Type /help when running to see all commands
+
+
+AUTOCODE:
+- Can run in background when enabled
+- Enable with: autocode on
+- Default: OFF
+
+
+VOICE:
+- Voice system is available
+- You can toggle it inside the program
