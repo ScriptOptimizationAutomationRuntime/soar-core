@@ -32,6 +32,7 @@ import urllib.request
 import ssl
 import certifi
 
+
 _last_resource_alert = 0
 RESOURCE_COOLDOWN = 10  #seconds
 intro_start_time = 0 
@@ -1251,6 +1252,7 @@ def analyze_code_syntax(file_path):
         return f"Could not analyze file structure: {e}"
 
 def reply_to(user_text):
+    
     text = user_text.strip().lower()
     parts = [] 
     if not text:
@@ -2755,17 +2757,13 @@ def cmd_shell(command):
 
 def start_voice_listener():
     global listener_stop
-
     if sr is None or recognizer is None:
         print("Speech recognition is not installed.")
         return False
-
     if listener_stop is not None:
         return True
-
     try:
         mic = sr.Microphone()
-        
         try:
             with mic as source:
                 recognizer.adjust_for_ambient_noise(source, duration=0.6)
@@ -2773,14 +2771,16 @@ def start_voice_listener():
             print(f"[VOICE WARNING] Calibration skipped: {e}")
 
         def callback(recognizer_obj, audio):
+            # ADD THIS CHECK: Ignore all incoming mic audio if the system is speaking
+            if IS_SPEAKING:
+                return
+
             try:
                 text = recognizer_obj.recognize_google(audio).strip()
                 if text:
                     print(f"\n[MIC HEARD]: '{text}'")
-                    
                     if stop_event.is_set() or shutting_down:
                         return
-                    
                     say_user(text)
                     threading.Thread(
                         target=process_command,
@@ -2797,15 +2797,13 @@ def start_voice_listener():
             acquired = voice_state_lock.acquire(blocking=False)
             if not acquired:
                 return False
-            
-            listener_stop = recognizer.listen_in_background(mic, callback, phrase_time_limit=4)
+            listener_stop = recognizer.listen_in_background(mic, callback)
         finally:
             if acquired:
                 try:
                     voice_state_lock.release()
                 except Exception:
                     pass
-
         return True
     except Exception as e:
         print(f"Could not start voice: {e}")
@@ -3543,6 +3541,60 @@ def process_command(raw, from_voice=False):
             print(f"Advanced Analysis Pipeline Error: {e}")
             return
         
+    if lower.startswith("csrs "):
+        try:
+            import platform
+            import subprocess
+            from pathlib import Path
+
+            cmd = lower.strip()
+            csrs_arg = cmd[5:].strip() if len(cmd) > 5 else "run"
+
+            speak(
+                maybe_address_user("Launching Connection Server Request System.", chance=0.2),
+                allow_sound=True
+            )
+
+            csrs_script = Path(__file__).resolve().parent / "csrs.py"
+
+            if not csrs_script.exists():
+                print("Error: csrs.py not found in the root directory.")
+                return
+
+            sys_os = platform.system().lower()
+
+            if "windows" in sys_os:
+                subprocess.Popen([
+                    "cmd.exe", "/c", "start", "/max", "cmd", "/k",
+                    "python", str(csrs_script), csrs_arg
+                ])
+
+            elif "darwin" in sys_os:
+                apple_script = (
+                    f'tell application "Terminal"\n'
+                    f'    do script "python3 \\"{csrs_script}\\" \\"{csrs_arg}\\""\n'
+                    f'    activate\n'
+                    f'end tell\n'
+                    f'tell application "System Events" to keystroke "f" using {{command down, control down}}'
+                )
+                subprocess.Popen(["osascript", "-e", apple_script])
+
+            elif "linux" in sys_os:
+                subprocess.Popen([
+                    "x-terminal-emulator",
+                    "--maximize",
+                    "-e",
+                    f"python3 {csrs_script} {csrs_arg}"
+                ])
+
+            else:
+                print("Unsupported OS for CSRS terminal execution.")
+
+        except Exception as e:
+            print(f"Failed to launch CSRS Engine: {e}")
+
+        return maybe_address_user("")
+    
     if lower.startswith("read ") or lower.startswith("constant read "):
         try:
             is_constant = lower.startswith("constant read ")
